@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forge Transit v1.4</title>
+    <title>Forge Transit v1.5</title>
     
-    <!-- Open Graph & Social Meta Tags (Optimized for WhatsApp, Facebook & Twitter) -->
+    <!-- Open Graph & Social Meta Tags -->
     <meta property="og:title" content="Forge Transit - Zero-Copy P2P Transfer" />
     <meta property="og:description" content="Serverless, high-speed peer-to-peer file transfer protocol operating completely offline over WebRTC DataChannels." />
     <meta property="og:url" content="https://cleo876.github.io/Forge-Transit/" />
@@ -24,8 +24,8 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #09090b; /* zinc-950 */
-            color: #f4f4f5; /* zinc-50 */
+            background-color: #09090b;
+            color: #f4f4f5;
             background-image: 
                 radial-gradient(at 0% 0%, hsla(160, 100%, 20%, 0.15) 0px, transparent 50%),
                 radial-gradient(at 100% 100%, hsla(160, 100%, 15%, 0.15) 0px, transparent 50%);
@@ -34,33 +34,26 @@
         }
 
         .glass-panel {
-            background: rgba(24, 24, 27, 0.65); /* zinc-900 */
+            background: rgba(24, 24, 27, 0.65);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        .primary-gradient {
-            background: linear-gradient(135deg, #10b981 0%, #047857 100%); /* emerald */
-        }
-        
+        .primary-gradient { background: linear-gradient(135deg, #10b981 0%, #047857 100%); }
         .primary-text-gradient {
             background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-        .drag-active {
-            border-color: #10b981 !important;
-            background: rgba(16, 185, 129, 0.05) !important;
-        }
+        .drag-active { border-color: #10b981 !important; background: rgba(16, 185, 129, 0.05) !important; }
         
         .loader {
             border-top-color: #10b981;
@@ -88,7 +81,7 @@
             <svg id="appLogo" class="w-8 h-8 text-emerald-500 cursor-pointer transition-transform hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
-            <h1 class="text-2xl font-bold tracking-tight">Forge <span class="primary-text-gradient">Transit</span> v1.4</h1>
+            <h1 class="text-2xl font-bold tracking-tight">Forge <span class="primary-text-gradient">Transit</span> v1.5</h1>
         </div>
         <div id="userIdentityDisplay" class="text-sm font-medium text-zinc-400 bg-zinc-800/50 px-4 py-2 rounded-full border border-zinc-700/50 hidden">
             Identity: <span id="identityName" class="text-emerald-400"></span>
@@ -103,55 +96,43 @@
             <div class="glass-panel rounded-2xl p-6 flex flex-col h-full fade-in" style="animation-delay: 0.1s;">
                 <h2 class="text-xl font-semibold mb-2">Payload Bay</h2>
                 
-                <!-- Tooltip: Step 1 -->
                 <div class="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 mb-4 text-sm text-zinc-300">
                     <p class="font-medium text-emerald-400 mb-1">Step 1. Prepare files for transit.</p>
                     <p>Drag and drop files or entire folders into the zone below. The system will automatically index and parse folder structures.</p>
                 </div>
 
-                <!-- Drop Zone -->
                 <div id="dropZone" class="flex-grow border-2 border-dashed border-zinc-700 rounded-xl bg-zinc-900/30 flex flex-col items-center justify-center p-8 transition-colors duration-200 cursor-pointer hover:bg-zinc-800/30 relative overflow-hidden group min-h-[250px]">
                     <svg class="w-12 h-12 text-zinc-500 mb-4 group-hover:text-emerald-500 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
                     </svg>
                     <p class="text-lg font-medium text-zinc-300 text-center">Drag files & folders here</p>
                     <p class="text-sm text-zinc-500 mt-2 text-center">or click to open file explorer</p>
-                    <!-- Hidden standard input as fallback -->
                     <input type="file" id="fileInput" multiple class="hidden">
                 </div>
 
-                <!-- File List -->
                 <div id="fileListContainer" class="mt-6 hidden flex-col h-64 border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/50">
                     <div class="bg-zinc-900 px-4 py-3 border-b border-zinc-800 flex justify-between items-center">
                         <span class="text-sm font-medium text-zinc-300" id="fileCountBadge">0 files indexed</span>
                         <button id="clearFilesBtn" class="text-xs text-red-400 hover:text-red-300 transition-colors">Clear All</button>
                     </div>
-                    <div id="fileList" class="overflow-y-auto p-2 flex-grow space-y-1">
-                        <!-- File items injected here -->
-                    </div>
+                    <div id="fileList" class="overflow-y-auto p-2 flex-grow space-y-1"></div>
                 </div>
                 
-                <!-- OPFS Export List (Receiver side) -->
                 <div id="receivedFilesContainer" class="mt-6 hidden flex-col border border-emerald-900/30 rounded-xl overflow-hidden bg-zinc-950/50">
                     <div class="bg-emerald-950/20 px-4 py-3 border-b border-emerald-900/30 flex justify-between items-center">
                         <span class="text-sm font-medium text-emerald-400">Secured in Local Transit Storage (OPFS)</span>
                     </div>
-                    <div id="receivedFileList" class="overflow-y-auto p-2 max-h-64 space-y-1">
-                        <!-- Received files injected here -->
-                    </div>
+                    <div id="receivedFileList" class="overflow-y-auto p-2 max-h-64 space-y-1"></div>
                 </div>
-
             </div>
         </div>
 
         <!-- Right Column: Control & Comm -->
         <div class="flex-1 flex flex-col gap-6 w-full lg:max-w-md">
             
-            <!-- Connection Setup Card -->
             <div class="glass-panel rounded-2xl p-6 flex flex-col fade-in relative" style="animation-delay: 0.2s;">
                 <h2 class="text-xl font-semibold mb-6">Uplink Control</h2>
 
-                <!-- Role Selection -->
                 <div id="roleSelectionUI" class="flex flex-col gap-4">
                     <div class="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 text-sm text-zinc-300">
                         <p class="font-medium text-emerald-400 mb-1">Step 2. Establish connection protocol.</p>
@@ -179,9 +160,7 @@
                         <label class="text-xs text-zinc-400 font-medium uppercase tracking-wider mb-1 block">Uplink URL</label>
                         <div class="flex">
                             <input type="text" id="senderUrlDisplay" readonly class="w-full bg-zinc-900 border border-zinc-700 rounded-l-lg px-4 py-3 text-emerald-400 font-mono text-sm focus:outline-none focus:border-emerald-500 truncate">
-                            <button id="btnCopyUrl" class="bg-zinc-800 border border-l-0 border-zinc-700 rounded-r-lg px-4 hover:bg-zinc-700 transition-colors text-zinc-300">
-                                Copy
-                            </button>
+                            <button id="btnCopyUrl" class="bg-zinc-800 border border-l-0 border-zinc-700 rounded-r-lg px-4 hover:bg-zinc-700 transition-colors text-zinc-300">Copy</button>
                         </div>
                     </div>
 
@@ -211,7 +190,6 @@
                     </button>
                 </div>
 
-                <!-- Active Connection Status -->
                 <div id="activeConnectionUI" class="hidden flex-col items-center justify-center py-6 gap-3">
                     <div class="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30 mb-2 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
                         <svg class="w-8 h-8 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
@@ -219,7 +197,6 @@
                     <h3 class="text-xl font-bold text-emerald-400">Tunnel Established</h3>
                     <p id="peerIdentityDisplay" class="text-sm text-zinc-400">Connected to peer.</p>
                 </div>
-
             </div>
 
             <!-- Transfer Status Card -->
@@ -272,9 +249,7 @@
             <h3 id="modalTitle" class="text-xl font-bold mb-2">Alert</h3>
             <p id="modalMessage" class="text-zinc-300 text-sm mb-4 leading-relaxed">Message here.</p>
             <input type="password" id="modalInput" class="hidden w-full bg-zinc-950/50 border border-zinc-700/50 rounded-lg px-4 py-3 mb-6 text-emerald-400 font-mono text-sm focus:outline-none focus:border-emerald-500 placeholder-zinc-600 transition-colors" placeholder="Enter passphrase...">
-            <div id="modalActions" class="flex justify-end gap-3 mt-2">
-                <!-- Buttons injected dynamically -->
-            </div>
+            <div id="modalActions" class="flex justify-end gap-3 mt-2"></div>
         </div>
     </div>
 
@@ -285,17 +260,17 @@
          *******************************************************/
         const CONFIG = {
             TWENTY_JSON_BASE: 'https://twenty-json.lovable.app/p/',
-            CHUNK_SIZE: 256 * 1024, // 256KB for near native UDP/SCTP throughput
-            MAX_BUFFER: 16 * 1024 * 1024, // 16MB buffer cap before pausing
-            ICE_GATHER_TIMEOUT: 8000, // Increased to 8s for restrictive networks
-            MAX_ICE_CANDIDATES: 20
+            CHUNK_SIZE: 64 * 1024, // Reduced to 64KB for stability over local networks
+            MAX_BUFFER: 8 * 1024 * 1024, // 8MB buffer cap
+            ICE_GATHER_TIMEOUT: 4000, // 4s timeout for ICE gathering (fallback)
+            MAX_ICE_CANDIDATES: 50
         };
 
         const STATE = {
             role: null, // 'sender' | 'receiver'
             identity: '',
             peerIdentity: '',
-            files: [], // Array of { file: File, path: string, size: number }
+            files: [],
             totalBytes: 0,
             sentBytes: 0,
             receivedBytes: 0,
@@ -318,9 +293,7 @@
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
         function playAlertBeep() {
@@ -328,7 +301,7 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch (A5)
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.1);
             gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
@@ -347,12 +320,12 @@
         function generateIdentity(role) {
             const list = role === 'sender' ? VEGETABLES : ANIMALS;
             const name = list[Math.floor(Math.random() * list.length)];
-            const num = Math.floor(Math.random() * 900) + 100; // 100-999
+            const num = Math.floor(Math.random() * 900) + 100;
             return `${name}-${num}`;
         }
 
         /*******************************************************
-         * MODAL UI SYSTEM (Replaces alert/confirm)
+         * MODAL UI SYSTEM
          *******************************************************/
         const modalOverlay = document.getElementById('modalOverlay');
         const modalBox = document.getElementById('modalBox');
@@ -408,11 +381,8 @@
             showModal('Administrator Override', 'Please enter the authorization passphrase to generate assets.', [
                 { label: 'Cancel' },
                 { label: 'Authorize', primary: true, onClick: (val) => {
-                    if (val === 'Cleon Williams') {
-                        generateAndDownloadOGImage();
-                    } else {
-                        customAlert('Access Denied', 'Invalid cryptographic passphrase.');
-                    }
+                    if (val === 'Cleon Williams') generateAndDownloadOGImage();
+                    else customAlert('Access Denied', 'Invalid cryptographic passphrase.');
                 }}
             ], true);
         });
@@ -423,21 +393,14 @@
             canvas.height = 630;
             const ctx = canvas.getContext('2d');
 
-            // Deep background
             ctx.fillStyle = '#09090b';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Architectural Grid
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
             ctx.lineWidth = 1;
-            for(let i = 0; i < 1200; i += 40) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 630); ctx.stroke();
-            }
-            for(let i = 0; i < 630; i += 40) {
-                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1200, i); ctx.stroke();
-            }
+            for(let i = 0; i < 1200; i += 40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 630); ctx.stroke(); }
+            for(let i = 0; i < 630; i += 40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1200, i); ctx.stroke(); }
 
-            // Emerald Ambient Glows
             const grd1 = ctx.createRadialGradient(0, 0, 0, 0, 0, 800);
             grd1.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
             grd1.addColorStop(1, 'transparent');
@@ -450,13 +413,12 @@
             ctx.fillStyle = grd2;
             ctx.fillRect(0, 0, 1200, 630);
 
-            // Draw Scaled Icon
             ctx.strokeStyle = '#10b981';
             ctx.lineWidth = 6;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.save();
-            ctx.translate(600 - 96, 140); // Center the 24x24 icon scaled by 8
+            ctx.translate(600 - 96, 140);
             ctx.scale(8, 8);
             ctx.beginPath();
             ctx.moveTo(12, 2); ctx.lineTo(2, 7); ctx.lineTo(12, 12); ctx.lineTo(22, 7); ctx.closePath();
@@ -465,23 +427,19 @@
             ctx.stroke();
             ctx.restore();
 
-            // Typography
             ctx.fillStyle = '#f4f4f5';
             ctx.font = 'bold 76px system-ui, -apple-system, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('Forge Transit', 600, 420);
 
-            // Subtitle with Emerald tint
             ctx.fillStyle = '#34d399';
             ctx.font = '500 36px system-ui, -apple-system, sans-serif';
             ctx.fillText('Zero-Copy P2P File Transfer Protocol', 600, 490);
 
-            // Small badge text
             ctx.fillStyle = 'rgba(255,255,255,0.4)';
             ctx.font = '500 24px monospace';
             ctx.fillText('WEBRTC DATACCHANNELS  ·  OPFS  ·  E2EE', 600, 570);
 
-            // Export to highly-compressed PNG blob
             canvas.toBlob((blob) => {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -492,14 +450,12 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 playAlertBeep();
-            }, 'image/png', 1.0); // PNG is lossless, compression level is automatic, typically < 100kb for this design
+            }, 'image/png', 1.0);
         }
 
         /*******************************************************
-         * OPFS WEB WORKER (Inline Blob Construction)
+         * OPFS WEB WORKER
          *******************************************************/
-        // This worker handles direct-to-disk synchronous writing to achieve near-native speed
-        // while bypassing the main thread's memory limitations.
         const workerCode = `
             let dirHandle;
             let fileHandle;
@@ -509,24 +465,18 @@
                 const { type, data } = e.data;
                 try {
                     if (type === 'INIT') {
-                        // Request OPFS root
                         const root = await navigator.storage.getDirectory();
                         dirHandle = await root.getDirectoryHandle('ForgeTransit_Received', { create: true });
                         postMessage({ type: 'READY' });
                     }
                     else if (type === 'START_FILE') {
-                        // Create file entry in OPFS
-                        // For simplicity in OPFS flat structure, replace slashes with underscores
                         const safeName = data.fileName.replace(/[\\\\/]/g, '_'); 
                         fileHandle = await dirHandle.getFileHandle(safeName, { create: true });
-                        // Create synchronous access handle for high-performance writing
                         syncHandle = await fileHandle.createSyncAccessHandle();
-                        // Truncate to 0 in case it existed
                         syncHandle.truncate(0); 
                         postMessage({ type: 'FILE_STARTED', safeName: safeName });
                     } 
                     else if (type === 'CHUNK') {
-                        // Synchronous write (zero copy from main thread if transferred)
                         const buffer = new Uint8Array(data.chunk);
                         syncHandle.write(buffer);
                         postMessage({ type: 'CHUNK_WRITTEN', size: buffer.byteLength });
@@ -537,9 +487,7 @@
                         postMessage({ type: 'FILE_CLOSED', safeName: data.safeName });
                     }
                     else if (type === 'ABORT') {
-                        if(syncHandle) {
-                            try { syncHandle.close(); } catch(e){}
-                        }
+                        if(syncHandle) { try { syncHandle.close(); } catch(e){} }
                         postMessage({ type: 'ABORTED' });
                     }
                 } catch(err) {
@@ -562,7 +510,6 @@
                     updateProgressUI(STATE.receivedBytes, STATE.totalBytes);
                 }
                 else if (type === 'FILE_CLOSED') {
-                    console.log('Worker: File saved to OPFS as', safeName);
                     addReceivedFileToUI(safeName);
                 }
                 else if (type === 'ERROR') {
@@ -590,7 +537,7 @@
         dropZone.addEventListener('drop', async (e) => {
             e.preventDefault();
             dropZone.classList.remove('drag-active');
-            if(STATE.role === 'receiver') return; // Receiver doesn't select files
+            if(STATE.role === 'receiver') return;
             
             const items = e.dataTransfer.items;
             const filePromises = [];
@@ -599,15 +546,12 @@
                 const item = items[i];
                 if (item.kind === 'file') {
                     const entry = item.webkitGetAsEntry();
-                    if (entry) {
-                        filePromises.push(scanFiles(entry, ''));
-                    }
+                    if (entry) filePromises.push(scanFiles(entry, ''));
                 }
             }
             
             const results = await Promise.all(filePromises);
-            const flatFiles = results.flat();
-            addFilesToState(flatFiles);
+            addFilesToState(results.flat());
         });
 
         dropZone.addEventListener('click', () => {
@@ -622,38 +566,32 @@
                 size: f.size
             }));
             addFilesToState(files);
-            fileInput.value = ''; // reset
+            fileInput.value = '';
         });
 
         async function scanFiles(item, path) {
             path = path || "";
             if (item.isFile) {
                 return new Promise((resolve) => {
-                    item.file((file) => {
-                        resolve([{ file: file, path: path + file.name, size: file.size }]);
-                    });
+                    item.file((file) => resolve([{ file: file, path: path + file.name, size: file.size }]));
                 });
             } else if (item.isDirectory) {
                 const dirReader = item.createReader();
                 let entries = [];
-                
                 const readEntries = async () => {
                     return new Promise((resolve) => {
                         dirReader.readEntries(async (results) => {
-                            if (!results.length) {
-                                resolve(entries);
-                            } else {
+                            if (!results.length) resolve(entries);
+                            else {
                                 entries = entries.concat(results);
                                 resolve(await readEntries());
                             }
                         });
                     });
                 };
-                
                 const allEntries = await readEntries();
                 const nestedPromises = allEntries.map(e => scanFiles(e, path + item.name + "/"));
-                const results = await Promise.all(nestedPromises);
-                return results.flat();
+                return (await Promise.all(nestedPromises)).flat();
             }
             return [];
         }
@@ -677,7 +615,7 @@
             
             dropZone.classList.add('hidden');
             fileListContainer.classList.remove('hidden', 'flex');
-            fileListContainer.classList.add('flex'); // re-apply flex
+            fileListContainer.classList.add('flex');
             
             let totalS = 0;
             fileList.innerHTML = '';
@@ -695,7 +633,6 @@
             STATE.totalBytes = totalS;
             fileCountBadge.textContent = `${STATE.files.length} items (${formatBytes(totalS)})`;
 
-            // Enable transfer button if connected
             if(STATE.connectionState === 'connected' && STATE.role === 'sender' && STATE.files.length > 0) {
                 document.getElementById('btnStartTransfer').classList.remove('hidden');
             }
@@ -711,18 +648,21 @@
         }
 
         /*******************************************************
-         * WEBRTC & SIGNALING
+         * WEBRTC & SIGNALING - CORE LOGIC UPGRADE
          *******************************************************/
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun.cloudflare.com:3478' }, // Added Cloudflare for fallback reliability
-                { urls: 'stun:stun.services.mozilla.com' } // Added Mozilla for fallback reliability
-            ]
+                { urls: 'stun:stun.cloudflare.com:3478' },
+                { urls: 'stun:stun.services.mozilla.com' }
+            ],
+            iceCandidatePoolSize: 10, // Start gathering candidates immediately
+            sdpSemantics: 'unified-plan'
         };
 
-        // Helper to dynamically wait for ICE gathering with UI updates
+        // FIXED: Wait for ICE gathering with a fallback timeout
+        // Vanilla ICE can hang if network is restrictive. We wait max 4 seconds.
         const waitForIce = (pc, statusElementId) => new Promise(resolve => {
             const el = document.getElementById(statusElementId);
             if (el) {
@@ -730,17 +670,29 @@
                 el.innerHTML = '<span class="text-yellow-400 animate-pulse">Gathering network routes (ICE)...</span>';
             }
 
-            if (pc.iceGatheringState === 'complete') {
-                if (el) el.innerHTML = '<span class="text-blue-400">ICE Gathering Complete.</span>';
-                resolve();
-            } else {
-                pc.addEventListener('icegatheringstatechange', () => {
-                    if (pc.iceGatheringState === 'complete') {
+            let isResolved = false;
+            const timeout = setTimeout(() => {
+                if (!isResolved) {
+                    console.warn('ICE Gathering Timeout. Proceeding with available candidates.');
+                    if (el) el.innerHTML = '<span class="text-yellow-400">ICE Timeout. Proceeding...</span>';
+                    resolve();
+                    isResolved = true;
+                }
+            }, CONFIG.ICE_GATHER_TIMEOUT);
+
+            const checkState = () => {
+                if (pc.iceGatheringState === 'complete') {
+                    if (!isResolved) {
+                        clearTimeout(timeout);
                         if (el) el.innerHTML = '<span class="text-blue-400">ICE Gathering Complete.</span>';
                         resolve();
+                        isResolved = true;
                     }
-                });
-            }
+                }
+            };
+
+            pc.addEventListener('icegatheringstatechange', checkState);
+            checkState(); // Check immediately in case it's already complete
         });
 
         async function createPeerConnection() {
@@ -774,17 +726,17 @@
                     }
                 } else if (state === 'failed') {
                     clearTimeout(disconnectTimeout);
-                    customAlert('Connection Failed', 'The P2P tunnel could not be established. Ensure both devices are on the same local network to bypass restrictive NATs.');
+                    customAlert('Connection Failed', 'The P2P tunnel could not be established. Ensure both devices are on the same local network.');
                     resetApp();
                 } else if (state === 'disconnected') {
-                    console.warn('ICE disconnected temporarily. Waiting for potential route recovery...');
-                    // Watchdog: If it stays disconnected for 10 seconds, it's a dead end.
+                    console.warn('ICE disconnected temporarily. Waiting for route recovery...');
+                    // Watchdog: Increase timeout to 15s to allow for network flickers
                     disconnectTimeout = setTimeout(() => {
                         if (pc.iceConnectionState !== 'connected') {
-                            customAlert('Connection Dropped', 'The tunnel failed to resolve a path. Devices might be on isolated networks.');
+                            customAlert('Connection Dropped', 'The tunnel failed to resolve a path. Devices might be on isolated networks (AP Isolation).');
                             resetApp();
                         }
-                    }, 10000);
+                    }, 15000);
                 }
             };
 
@@ -793,7 +745,11 @@
 
         function setupDataChannel(channel) {
             channel.binaryType = 'arraybuffer';
-            channel.onopen = () => console.log('DataChannel Open');
+            channel.onopen = () => {
+                console.log('DataChannel Open');
+                // CRITICAL FIX: Set the buffer threshold for file transfer
+                channel.bufferedAmountLowThreshold = CONFIG.MAX_BUFFER / 2;
+            };
             channel.onclose = () => console.log('DataChannel Closed');
             channel.onerror = (e) => console.error('DataChannel Error', e);
             channel.onmessage = handleChannelMessage;
@@ -819,7 +775,6 @@
             const pc = await createPeerConnection();
             STATE.rtcPeerConnection = pc;
             
-            // EXPLICIT NEGOTIATION: Both sides create channel with ID 0. Prevents ondatachannel failures.
             const dc = pc.createDataChannel('transit-channel', { negotiated: true, id: 0 });
             setupDataChannel(dc);
 
@@ -833,10 +788,8 @@
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            // Dynamically wait for ICE candidates to populate with UI feedback
             await waitForIce(pc, 'senderConnectionState');
 
-            // Post Offer to Twenty-JSON
             document.getElementById('senderIceStatus').textContent = 'Uploading SDP to Relay...';
             try {
                 const payload = {
@@ -853,9 +806,7 @@
                     body: JSON.stringify(payload)
                 });
                 
-                document.getElementById('senderIceStatus').innerHTML = '<span class="text-emerald-400">Uplink Ready.</span> <span class="animate-pulse">Awaiting Peer Connection...</span>';
-                
-                // Initiate Auto-polling instead of relying on manual clicks
+                document.getElementById('senderIceStatus').innerHTML = '<span class="text-emerald-400">Uplink Ready.</span> <span class="animate-pulse">Awaiting Peer...</span>';
                 startAutoPolling(url);
             } catch(e) {
                 customAlert('Signaling Error', 'Could not post to signaling server.');
@@ -873,13 +824,12 @@
 
         function startAutoPolling(url) {
             const btn = document.getElementById('btnCheckAnswer');
-            btn.innerHTML = '<div class="w-4 h-4 rounded-full border-2 border-white loader inline-block align-middle mr-2"></div> Auto-Scanning Relay...';
+            btn.innerHTML = '<div class="w-4 h-4 rounded-full border-2 border-white loader inline-block align-middle mr-2"></div> Auto-Scanning...';
             btn.disabled = true;
             btn.classList.remove('opacity-50', 'cursor-not-allowed');
-            btn.classList.add('opacity-90');
 
             let attempts = 0;
-            const maxAttempts = 120; // Up to 6 minutes of polling
+            const maxAttempts = 100; // ~5 minutes
 
             STATE.pollInterval = setInterval(async () => {
                 attempts++;
@@ -894,24 +844,25 @@
                 }
 
                 try {
-                    const res = await fetch(url);
-                    if (res.status === 404) return; // Record self-destructed or not found yet
+                    // CRITICAL FIX: Cache busting for the polling request
+                    const res = await fetch(url + '?t=' + Date.now(), { cache: 'no-store' });
+                    if (res.status === 404) return; 
                     const data = await res.json();
                     
                     if (data.receiver && data.receiver.answer) {
                         clearInterval(STATE.pollInterval);
-                        btn.innerHTML = 'Peer Route Found! Establishing Tunnel...';
+                        btn.innerHTML = 'Peer Found! Establishing...';
                         
                         STATE.peerIdentity = data.receiver.name;
                         document.getElementById('peerIdentityDisplay').textContent = `Connected to: ${STATE.peerIdentity}`;
                         
                         await STATE.rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(data.receiver.answer));
-                        for (const candidate of data.receiver.candidates || []) {
-                            if (candidate) {
-                                try {
-                                    await STATE.rtcPeerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                                } catch (e) {
-                                    console.warn('Failed to add an ICE candidate:', e);
+                        
+                        if (data.receiver.candidates) {
+                            for (const candidate of data.receiver.candidates) {
+                                if (candidate) {
+                                    try { await STATE.rtcPeerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } 
+                                    catch (e) { console.warn('Failed to add ICE candidate:', e); }
                                 }
                             }
                         }
@@ -919,7 +870,7 @@
                 } catch(e) {
                     console.log('Polling iteration skipped/failed:', e);
                 }
-            }, 3000); // Check every 3 seconds
+            }, 2000);
         }
 
         // --- RECEIVER LOGIC ---
@@ -934,7 +885,6 @@
             document.getElementById('receiverSignalingUI').classList.remove('hidden', 'flex');
             document.getElementById('receiverSignalingUI').classList.add('flex');
             
-            // Receiver shouldn't use file dropper for sending
             dropZone.querySelector('p').textContent = 'Receiver Mode Active';
             dropZone.querySelector('p.text-sm').textContent = 'Waiting to receive files...';
             dropZone.classList.add('pointer-events-none');
@@ -950,71 +900,81 @@
             }
 
             const btn = document.getElementById('btnScanUplink');
-            btn.innerHTML = '<div class="w-5 h-5 rounded-full border-2 border-white loader inline-block align-middle mr-2"></div> Connecting...';
+            btn.innerHTML = '<div class="w-5 h-5 rounded-full border-2 border-white loader inline-block align-middle mr-2"></div> Scanning...';
             btn.disabled = true;
 
-            try {
-                const res = await fetch(url);
-                const data = await res.json();
-                
-                if(!data.sender || !data.sender.offer) throw new Error("Invalid SDP format in relay.");
-                
-                STATE.peerIdentity = data.sender.name;
-                document.getElementById('peerIdentityDisplay').textContent = `Connected to: ${STATE.peerIdentity}`;
+            let attempts = 0;
+            const maxAttempts = 10; // 20 seconds of retrying
 
-                const pc = await createPeerConnection();
-                STATE.rtcPeerConnection = pc;
-                
-                // EXPLICIT NEGOTIATION: Mirroring the sender to instantly bind the tunnel.
-                const dc = pc.createDataChannel('transit-channel', { negotiated: true, id: 0 });
-                setupDataChannel(dc);
-                
-                let candidates = [];
-                pc.onicecandidate = (e) => {
-                    if (e.candidate && candidates.length < CONFIG.MAX_ICE_CANDIDATES) {
-                        candidates.push(e.candidate);
-                    }
-                };
-
-                await pc.setRemoteDescription(new RTCSessionDescription(data.sender.offer));
-                for (const candidate of data.sender.candidates || []) {
-                    if (candidate) {
-                        try {
-                            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                        } catch (e) {
-                            console.warn('Failed to add remote candidate:', e);
-                        }
-                    }
+            const attemptConnection = async () => {
+                attempts++;
+                if (attempts > maxAttempts) {
+                    customAlert('Relay Error', 'Could not find the sender. Make sure the URL is correct and the sender is active.');
+                    btn.textContent = 'Scan & Connect';
+                    btn.disabled = false;
+                    return;
                 }
 
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
+                try {
+                    const res = await fetch(url + '?t=' + Date.now(), { cache: 'no-store' });
+                    const data = await res.json();
+                    
+                    if(!data.sender || !data.sender.offer) throw new Error("SDP not ready yet.");
+                    
+                    STATE.peerIdentity = data.sender.name;
+                    document.getElementById('peerIdentityDisplay').textContent = `Connected to: ${STATE.peerIdentity}`;
 
-                // Dynamically wait for ICE candidates with UI feedback
-                await waitForIce(pc, 'receiverConnectionState');
+                    const pc = await createPeerConnection();
+                    STATE.rtcPeerConnection = pc;
+                    
+                    const dc = pc.createDataChannel('transit-channel', { negotiated: true, id: 0 });
+                    setupDataChannel(dc);
+                    
+                    let candidates = [];
+                    pc.onicecandidate = (e) => {
+                        if (e.candidate && candidates.length < CONFIG.MAX_ICE_CANDIDATES) {
+                            candidates.push(e.candidate);
+                        }
+                    };
 
-                // Post Answer back to same URL
-                data.receiver = {
-                    name: STATE.identity,
-                    answer: pc.localDescription,
-                    candidates: candidates
-                };
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.sender.offer));
+                    
+                    if (data.sender.candidates) {
+                        for (const candidate of data.sender.candidates) {
+                            if (candidate) {
+                                try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } 
+                                catch (e) { console.warn('Failed to add remote candidate:', e); }
+                            }
+                        }
+                    }
 
-                await fetch(url, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                
-                btn.textContent = 'Answer Posted! Waiting for Sender...';
-                playAlertBeep();
-                
-            } catch(e) {
-                console.error(e);
-                customAlert('Relay Error', 'Could not scan uplink. Make sure the URL is correct and has not expired.');
-                btn.textContent = 'Scan & Connect';
-                btn.disabled = false;
-            }
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+
+                    await waitForIce(pc, 'receiverConnectionState');
+
+                    data.receiver = {
+                        name: STATE.identity,
+                        answer: pc.localDescription,
+                        candidates: candidates
+                    };
+
+                    await fetch(url, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    btn.textContent = 'Answer Posted! Waiting for Sender...';
+                    playAlertBeep();
+                    
+                } catch(e) {
+                    console.log(`Scan attempt ${attempts} failed, retrying...`);
+                    setTimeout(attemptConnection, 2000); // Wait 2s and retry
+                }
+            };
+
+            attemptConnection();
         });
 
         /*******************************************************
@@ -1024,7 +984,6 @@
             if (typeof e.data === 'string') {
                 const msg = JSON.parse(e.data);
                 
-                // Receiver handling requests
                 if (msg.cmd === 'REQUEST_TRANSFER') {
                     playAlertBeep();
                     showModal('Incoming Transit Request', 
@@ -1046,15 +1005,10 @@
                     document.getElementById('currentFileName').textContent = msg.fileName;
                     document.getElementById('currentFileProgressText').textContent = '0%';
                     document.getElementById('currentFileProgressBar').style.width = '0%';
-                    
-                    if(STATE.opfsWorker) {
-                        STATE.opfsWorker.postMessage({ type: 'START_FILE', data: { fileName: msg.fileName }});
-                    }
+                    if(STATE.opfsWorker) STATE.opfsWorker.postMessage({ type: 'START_FILE', data: { fileName: msg.fileName }});
                 }
                 else if (msg.cmd === 'END_FILE') {
-                    if(STATE.opfsWorker) {
-                        STATE.opfsWorker.postMessage({ type: 'END_FILE', data: { safeName: msg.fileName.replace(/[\\\\/]/g, '_') } });
-                    }
+                    if(STATE.opfsWorker) STATE.opfsWorker.postMessage({ type: 'END_FILE', data: { safeName: msg.fileName.replace(/[\\\\/]/g, '_') } });
                 }
                 else if (msg.cmd === 'ALL_DONE') {
                     playAlertBeep();
@@ -1062,7 +1016,6 @@
                     document.getElementById('overallStatusText').classList.replace('text-emerald-400', 'text-blue-400');
                     customAlert('Transfer Complete', 'All files have been successfully received and saved to local transit storage.');
                 }
-                // Sender handling responses
                 else if (msg.cmd === 'ACCEPT') {
                     document.getElementById('overallStatusText').textContent = 'TRANSMITTING';
                     document.getElementById('overallStatusText').classList.add('text-emerald-400', 'border-emerald-500/50');
@@ -1087,15 +1040,12 @@
                 }
             } 
             else if (e.data instanceof ArrayBuffer) {
-                // Binary Chunk Received
                 if(STATE.opfsWorker) {
-                    // Zero-copy transfer to worker
                     STATE.opfsWorker.postMessage({ type: 'CHUNK', data: { chunk: e.data } }, [e.data]);
                 }
             }
         }
 
-        // Sender Flow
         document.getElementById('btnStartTransfer').addEventListener('click', () => {
             const btn = document.getElementById('btnStartTransfer');
             btn.textContent = 'Awaiting Consent...';
@@ -1163,8 +1113,8 @@
                     if (STATE.cancelRequested) return resolve();
                     
                     if (offset < totalSize) {
+                        // CRITICAL FIX: Ensure bufferedAmountLowThreshold is set
                         if (STATE.dataChannel.bufferedAmount > CONFIG.MAX_BUFFER) {
-                            // Wait for buffer to drain to prevent memory crash
                             STATE.dataChannel.onbufferedamountlow = () => {
                                 STATE.dataChannel.onbufferedamountlow = null;
                                 sendNext();
@@ -1185,14 +1135,13 @@
                         offset += buffer.byteLength;
                         STATE.sentBytes += buffer.byteLength;
                         
-                        // Update UI
                         const filePerc = Math.min(100, Math.round((offset / totalSize) * 100));
                         document.getElementById('currentFileProgressText').textContent = `${filePerc}%`;
                         document.getElementById('currentFileProgressBar').style.width = `${filePerc}%`;
                         updateProgressUI(STATE.sentBytes, STATE.totalBytes);
 
-                        // Use setTimeout occasionally to yield to UI thread if synchronous loop blocks
-                        if(offset % (CONFIG.CHUNK_SIZE * 10) === 0) {
+                        // Yield to UI thread occasionally
+                        if(offset % (CONFIG.CHUNK_SIZE * 20) === 0) {
                             setTimeout(sendNext, 0);
                         } else {
                             sendNext();
@@ -1212,7 +1161,6 @@
             document.getElementById('overallProgressBar').style.width = `${overallPerc}%`;
         }
 
-        // Export Mechanism from OPFS to User Disk
         function addReceivedFileToUI(safeName) {
             const container = document.getElementById('receivedFilesContainer');
             const list = document.getElementById('receivedFileList');
@@ -1235,9 +1183,6 @@
                 const fileHandle = await dirHandle.getFileHandle(safeName);
                 const file = await fileHandle.getFile();
                 
-                // Fallback approach for single file: Create blob URL
-                // Note: For massive files (>2GB), a direct WritableStream is better, 
-                // but blob url is universally supported for anchor downloads.
                 const url = URL.createObjectURL(file);
                 const a = document.createElement('a');
                 a.href = url;
@@ -1253,9 +1198,8 @@
         }
 
         function resetApp() {
-            setTimeout(() => window.location.reload(), 2000);
+            setTimeout(() => window.location.reload(), 3000);
         }
-
     </script>
 </body>
 </html>
