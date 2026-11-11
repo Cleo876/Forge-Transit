@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forge Transit v1.3</title>
+    <title>Forge Transit v1.4</title>
     
     <!-- Open Graph & Social Meta Tags (Optimized for WhatsApp, Facebook & Twitter) -->
     <meta property="og:title" content="Forge Transit - Zero-Copy P2P Transfer" />
@@ -88,7 +88,7 @@
             <svg id="appLogo" class="w-8 h-8 text-emerald-500 cursor-pointer transition-transform hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
-            <h1 class="text-2xl font-bold tracking-tight">Forge <span class="primary-text-gradient">Transit</span> v1.3</h1>
+            <h1 class="text-2xl font-bold tracking-tight">Forge <span class="primary-text-gradient">Transit</span> v1.4</h1>
         </div>
         <div id="userIdentityDisplay" class="text-sm font-medium text-zinc-400 bg-zinc-800/50 px-4 py-2 rounded-full border border-zinc-700/50 hidden">
             Identity: <span id="identityName" class="text-emerald-400"></span>
@@ -734,21 +734,25 @@
                 if (el) el.innerHTML = '<span class="text-blue-400">ICE Gathering Complete.</span>';
                 resolve();
             } else {
-                const checkState = () => {
-                    if (pc.iceGatheringState === 'complete') {
-                        pc.removeEventListener('icegatheringstatechange', checkState);
-                        if (el) el.innerHTML = '<span class="text-blue-400">ICE Gathering Complete.</span>';
-                        resolve();
-                    }
-                };
-                pc.addEventListener('icegatheringstatechange', checkState);
-                
-                // Reduced safety net to 3s to prevent hanging. Local IP routes are gathered instantly.
-                setTimeout(() => {
-                    pc.removeEventListener('icegatheringstatechange', checkState);
-                    if (el) el.innerHTML = '<span class="text-emerald-400">ICE Gathering Ready (Using available routes).</span>';
+                let resolved = false;
+                const finish = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    if (el) el.innerHTML = '<span class="text-blue-400">ICE Gathering Complete.</span>';
                     resolve();
-                }, 3000); 
+                };
+
+                pc.addEventListener('icegatheringstatechange', () => {
+                    if (pc.iceGatheringState === 'complete') finish();
+                });
+                
+                // Allowed up to 15 seconds for STUN/TURN resolution to ensure public IPs are found
+                setTimeout(() => {
+                    if (!resolved) {
+                        console.warn("ICE gathering timed out, proceeding with gathered candidates.");
+                        finish();
+                    }
+                }, 15000); 
             }
         });
 
