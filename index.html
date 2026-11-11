@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forge Transit</title>
+    <title>Forge Transit v1.3</title>
     
     <!-- Open Graph & Social Meta Tags (Optimized for WhatsApp, Facebook & Twitter) -->
     <meta property="og:title" content="Forge Transit - Zero-Copy P2P Transfer" />
@@ -88,7 +88,7 @@
             <svg id="appLogo" class="w-8 h-8 text-emerald-500 cursor-pointer transition-transform hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
-            <h1 class="text-2xl font-bold tracking-tight">Forge <span class="primary-text-gradient">Transit</span></h1>
+            <h1 class="text-2xl font-bold tracking-tight">Forge <span class="primary-text-gradient">Transit</span> v1.3</h1>
         </div>
         <div id="userIdentityDisplay" class="text-sm font-medium text-zinc-400 bg-zinc-800/50 px-4 py-2 rounded-full border border-zinc-700/50 hidden">
             Identity: <span id="identityName" class="text-emerald-400"></span>
@@ -186,6 +186,7 @@
                     </div>
 
                     <div id="senderIceStatus" class="text-xs text-emerald-500 font-mono mt-1 mb-2">Generating Secure Parameters...</div>
+                    <div id="senderConnectionState" class="text-xs text-zinc-400 font-mono mt-1 mb-2 hidden">State: IDLE</div>
 
                     <button id="btnCheckAnswer" disabled class="w-full py-3 px-4 rounded-lg primary-gradient text-white font-medium transition-all opacity-50 cursor-not-allowed mt-2">
                         Check for Peer Route
@@ -203,6 +204,7 @@
                         <label class="text-xs text-zinc-400 font-medium uppercase tracking-wider mb-1 block">Uplink URL</label>
                         <input type="text" id="receiverUrlInput" placeholder="https://twenty-json.lovable.app/p/..." class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-zinc-200 font-mono text-sm focus:outline-none focus:border-emerald-500 transition-colors">
                     </div>
+                    <div id="receiverConnectionState" class="text-xs text-zinc-400 font-mono mt-1 mb-2 hidden">State: IDLE</div>
 
                     <button id="btnScanUplink" class="w-full py-3 px-4 rounded-lg primary-gradient text-white font-medium transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] mt-2">
                         Scan & Connect
@@ -720,32 +722,51 @@
             ]
         };
 
-        // Helper to dynamically wait for ICE gathering without strictly relying on timeouts
-        const waitForIce = (pc) => new Promise(resolve => {
+        // Helper to dynamically wait for ICE gathering with UI updates
+        const waitForIce = (pc, statusElementId) => new Promise(resolve => {
+            const el = document.getElementById(statusElementId);
+            if (el) {
+                el.classList.remove('hidden');
+                el.innerHTML = '<span class="text-yellow-400 animate-pulse">Gathering network routes (ICE)...</span>';
+            }
+
             if (pc.iceGatheringState === 'complete') {
+                if (el) el.innerHTML = '<span class="text-blue-400">ICE Gathering Complete.</span>';
                 resolve();
             } else {
                 const checkState = () => {
                     if (pc.iceGatheringState === 'complete') {
                         pc.removeEventListener('icegatheringstatechange', checkState);
+                        if (el) el.innerHTML = '<span class="text-blue-400">ICE Gathering Complete.</span>';
                         resolve();
                     }
                 };
                 pc.addEventListener('icegatheringstatechange', checkState);
-                // Safety net timeout
+                
+                // Reduced safety net to 3s to prevent hanging. Local IP routes are gathered instantly.
                 setTimeout(() => {
                     pc.removeEventListener('icegatheringstatechange', checkState);
+                    if (el) el.innerHTML = '<span class="text-emerald-400">ICE Gathering Ready (Using available routes).</span>';
                     resolve();
-                }, CONFIG.ICE_GATHER_TIMEOUT);
+                }, 3000); 
             }
         });
 
         async function createPeerConnection() {
             const pc = new RTCPeerConnection(rtcConfig);
+            let disconnectTimeout;
             
             pc.oniceconnectionstatechange = () => {
-                console.log('ICE State:', pc.iceConnectionState);
-                if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+                const state = pc.iceConnectionState;
+                console.log('ICE State:', state);
+                
+                const senderStateEl = document.getElementById('senderConnectionState');
+                const receiverStateEl = document.getElementById('receiverConnectionState');
+                if (senderStateEl) { senderStateEl.classList.remove('hidden'); senderStateEl.textContent = `Connection State: ${state.toUpperCase()}`; }
+                if (receiverStateEl) { receiverStateEl.classList.remove('hidden'); receiverStateEl.textContent = `Connection State: ${state.toUpperCase()}`; }
+
+                if (state === 'connected' || state === 'completed') {
+                    clearTimeout(disconnectTimeout);
                     document.getElementById('activeConnectionUI').classList.remove('hidden', 'flex');
                     document.getElementById('activeConnectionUI').classList.add('flex');
                     document.getElementById('senderSignalingUI').classList.add('hidden');
@@ -760,12 +781,19 @@
                     if(STATE.role === 'sender' && STATE.files.length > 0) {
                         document.getElementById('btnStartTransfer').classList.remove('hidden');
                     }
-                } else if (pc.iceConnectionState === 'failed') {
+                } else if (state === 'failed') {
+                    clearTimeout(disconnectTimeout);
                     customAlert('Connection Failed', 'The P2P tunnel could not be established. Ensure both devices are on the same local network to bypass restrictive NATs.');
                     resetApp();
-                } else if (pc.iceConnectionState === 'disconnected') {
+                } else if (state === 'disconnected') {
                     console.warn('ICE disconnected temporarily. Waiting for potential route recovery...');
-                    // Do not reset app here! WebRTC often recovers from this state automatically.
+                    // Watchdog: If it stays disconnected for 10 seconds, it's a dead end.
+                    disconnectTimeout = setTimeout(() => {
+                        if (pc.iceConnectionState !== 'connected') {
+                            customAlert('Connection Dropped', 'The tunnel failed to resolve a path. Devices might be on isolated networks.');
+                            resetApp();
+                        }
+                    }, 10000);
                 }
             };
 
@@ -776,6 +804,7 @@
             channel.binaryType = 'arraybuffer';
             channel.onopen = () => console.log('DataChannel Open');
             channel.onclose = () => console.log('DataChannel Closed');
+            channel.onerror = (e) => console.error('DataChannel Error', e);
             channel.onmessage = handleChannelMessage;
             STATE.dataChannel = channel;
         }
@@ -799,13 +828,11 @@
             const pc = await createPeerConnection();
             STATE.rtcPeerConnection = pc;
             
-            // Fix: Standard in-band negotiated channel so the receiver's ondatachannel event fires
-            const dc = pc.createDataChannel('transit-channel');
+            // EXPLICIT NEGOTIATION: Both sides create channel with ID 0. Prevents ondatachannel failures.
+            const dc = pc.createDataChannel('transit-channel', { negotiated: true, id: 0 });
             setupDataChannel(dc);
 
             let candidates = [];
-            let iceGatheringComplete = false;
-
             pc.onicecandidate = (e) => {
                 if (e.candidate && candidates.length < CONFIG.MAX_ICE_CANDIDATES) {
                     candidates.push(e.candidate);
@@ -815,8 +842,8 @@
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            // Dynamically wait for ICE candidates to populate
-            await waitForIce(pc);
+            // Dynamically wait for ICE candidates to populate with UI feedback
+            await waitForIce(pc, 'senderConnectionState');
 
             // Post Offer to Twenty-JSON
             document.getElementById('senderIceStatus').textContent = 'Uploading SDP to Relay...';
@@ -947,7 +974,9 @@
                 const pc = await createPeerConnection();
                 STATE.rtcPeerConnection = pc;
                 
-                pc.ondatachannel = (event) => setupDataChannel(event.channel);
+                // EXPLICIT NEGOTIATION: Mirroring the sender to instantly bind the tunnel.
+                const dc = pc.createDataChannel('transit-channel', { negotiated: true, id: 0 });
+                setupDataChannel(dc);
                 
                 let candidates = [];
                 pc.onicecandidate = (e) => {
@@ -970,8 +999,8 @@
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
 
-                // Dynamically wait for ICE candidates
-                await waitForIce(pc);
+                // Dynamically wait for ICE candidates with UI feedback
+                await waitForIce(pc, 'receiverConnectionState');
 
                 // Post Answer back to same URL
                 data.receiver = {
