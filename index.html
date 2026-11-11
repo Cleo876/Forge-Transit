@@ -285,8 +285,8 @@
             TWENTY_JSON_BASE: 'https://twenty-json.lovable.app/p/',
             CHUNK_SIZE: 256 * 1024, // 256KB for near native UDP/SCTP throughput
             MAX_BUFFER: 16 * 1024 * 1024, // 16MB buffer cap before pausing
-            ICE_GATHER_TIMEOUT: 2500, // Capped wait time for ICE candidates
-            MAX_ICE_CANDIDATES: 8
+            ICE_GATHER_TIMEOUT: 8000, // Increased to 8s for restrictive networks
+            MAX_ICE_CANDIDATES: 20
         };
 
         const STATE = {
@@ -304,7 +304,8 @@
             isTransferring: false,
             cancelRequested: false,
             opfsWorker: null,
-            currentFileIndex: 0
+            currentFileIndex: 0,
+            pollInterval: null
         };
 
         /*******************************************************
@@ -711,8 +712,33 @@
          * WEBRTC & SIGNALING
          *******************************************************/
         const rtcConfig = {
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun.cloudflare.com:3478' }, // Added Cloudflare for fallback reliability
+                { urls: 'stun:stun.services.mozilla.com' } // Added Mozilla for fallback reliability
+            ]
         };
+
+        // Helper to dynamically wait for ICE gathering without strictly relying on timeouts
+        const waitForIce = (pc) => new Promise(resolve => {
+            if (pc.iceGatheringState === 'complete') {
+                resolve();
+            } else {
+                const checkState = () => {
+                    if (pc.iceGatheringState === 'complete') {
+                        pc.removeEventListener('icegatheringstatechange', checkState);
+                        resolve();
+                    }
+                };
+                pc.addEventListener('icegatheringstatechange', checkState);
+                // Safety net timeout
+                setTimeout(() => {
+                    pc.removeEventListener('icegatheringstatechange', checkState);
+                    resolve();
+                }, CONFIG.ICE_GATHER_TIMEOUT);
+            }
+        });
 
         async function createPeerConnection() {
             const pc = new RTCPeerConnection(rtcConfig);
@@ -785,16 +811,8 @@
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            // Wait a short time for ICE gathering to finish quickly rather than indefinitely
-            await new Promise(resolve => {
-                if (pc.iceGatheringState === 'complete') resolve();
-                else {
-                    pc.onicegatheringstatechange = () => {
-                        if (pc.iceGatheringState === 'complete') resolve();
-                    };
-                    setTimeout(resolve, CONFIG.ICE_GATHER_TIMEOUT);
-                }
-            });
+            // Dynamically wait for ICE candidates to populate
+            await waitForIce(pc);
 
             // Post Offer to Twenty-JSON
             document.getElementById('senderIceStatus').textContent = 'Uploading SDP to Relay...';
@@ -813,9 +831,10 @@
                     body: JSON.stringify(payload)
                 });
                 
-                document.getElementById('senderIceStatus').textContent = 'Uplink Ready. Awaiting Peer.';
-                document.getElementById('btnCheckAnswer').disabled = false;
-                document.getElementById('btnCheckAnswer').classList.remove('opacity-50', 'cursor-not-allowed');
+                document.getElementById('senderIceStatus').innerHTML = '<span class="text-emerald-400">Uplink Ready.</span> <span class="animate-pulse">Awaiting Peer Connection...</span>';
+                
+                // Initiate Auto-polling instead of relying on manual clicks
+                startAutoPolling(url);
             } catch(e) {
                 customAlert('Signaling Error', 'Could not post to signaling server.');
             }
@@ -830,32 +849,56 @@
             setTimeout(() => btn.textContent = 'Copy', 2000);
         });
 
-        document.getElementById('btnCheckAnswer').addEventListener('click', async () => {
-            const url = CONFIG.TWENTY_JSON_BASE + STATE.signalingId;
-            try {
-                document.getElementById('btnCheckAnswer').textContent = 'Polling...';
-                const res = await fetch(url);
-                const data = await res.json();
+        function startAutoPolling(url) {
+            const btn = document.getElementById('btnCheckAnswer');
+            btn.innerHTML = '<div class="w-4 h-4 rounded-full border-2 border-white loader inline-block align-middle mr-2"></div> Auto-Scanning Relay...';
+            btn.disabled = true;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.classList.add('opacity-90');
+
+            let attempts = 0;
+            const maxAttempts = 120; // Up to 6 minutes of polling
+
+            STATE.pollInterval = setInterval(async () => {
+                attempts++;
                 
-                if (data.receiver && data.receiver.answer) {
-                    STATE.peerIdentity = data.receiver.name;
-                    document.getElementById('peerIdentityDisplay').textContent = `Connected to: ${STATE.peerIdentity}`;
-                    
-                    await STATE.rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(data.receiver.answer));
-                    for (const candidate of data.receiver.candidates || []) {
-                        await STATE.rtcPeerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                if(STATE.connectionState === 'connected' || attempts > maxAttempts) {
+                    clearInterval(STATE.pollInterval);
+                    if(attempts > maxAttempts) {
+                        btn.innerHTML = 'Session Expired';
+                        customAlert('Timeout', 'The signaling session has expired. Please refresh and try again.');
                     }
-                    // Connection will trigger iceconnectionstatechange
-                } else {
-                    document.getElementById('btnCheckAnswer').textContent = 'Check for Peer Route';
-                    // customAlert('No Route', 'Peer has not posted an answer yet. Wait a moment.');
-                    // Silent fail to allow rapid polling by user
+                    return;
                 }
-            } catch(e) {
-                document.getElementById('btnCheckAnswer').textContent = 'Check for Peer Route';
-                console.error(e);
-            }
-        });
+
+                try {
+                    const res = await fetch(url);
+                    if (res.status === 404) return; // Record self-destructed or not found yet
+                    const data = await res.json();
+                    
+                    if (data.receiver && data.receiver.answer) {
+                        clearInterval(STATE.pollInterval);
+                        btn.innerHTML = 'Peer Route Found! Establishing Tunnel...';
+                        
+                        STATE.peerIdentity = data.receiver.name;
+                        document.getElementById('peerIdentityDisplay').textContent = `Connected to: ${STATE.peerIdentity}`;
+                        
+                        await STATE.rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(data.receiver.answer));
+                        for (const candidate of data.receiver.candidates || []) {
+                            if (candidate) {
+                                try {
+                                    await STATE.rtcPeerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                                } catch (e) {
+                                    console.warn('Failed to add an ICE candidate:', e);
+                                }
+                            }
+                        }
+                    }
+                } catch(e) {
+                    console.log('Polling iteration skipped/failed:', e);
+                }
+            }, 3000); // Check every 3 seconds
+        }
 
         // --- RECEIVER LOGIC ---
         document.getElementById('btnInitReceiver').addEventListener('click', () => {
@@ -911,21 +954,20 @@
 
                 await pc.setRemoteDescription(new RTCSessionDescription(data.sender.offer));
                 for (const candidate of data.sender.candidates || []) {
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    if (candidate) {
+                        try {
+                            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                        } catch (e) {
+                            console.warn('Failed to add remote candidate:', e);
+                        }
+                    }
                 }
 
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
 
-                await new Promise(resolve => {
-                    if (pc.iceGatheringState === 'complete') resolve();
-                    else {
-                        pc.onicegatheringstatechange = () => {
-                            if (pc.iceGatheringState === 'complete') resolve();
-                        };
-                        setTimeout(resolve, CONFIG.ICE_GATHER_TIMEOUT);
-                    }
-                });
+                // Dynamically wait for ICE candidates
+                await waitForIce(pc);
 
                 // Post Answer back to same URL
                 data.receiver = {
