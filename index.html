@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge Transit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b; /* zinc-950 */
+            color: #f4f4f5; /* zinc-50 */
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(160, 100%, 20%, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(160, 100%, 15%, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(24, 24, 27, 0.65); /* zinc-900 */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .primary-gradient {
+            background: linear-gradient(135deg, #10b981 0%, #047857 100%); /* emerald */
+        }
+        
+        .primary-text-gradient {
+            background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        .drag-active {
+            border-color: #10b981 !important;
+            background: rgba(16, 185, 129, 0.05) !important;
+        }
+        
+        .loader {
+            border-top-color: #10b981;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fade-in { animation: fadeIn 0.3s ease-in forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-emerald-500/30">
+
+    <!-- Navbar -->
+    <nav class="w-full px-8 py-6 flex items-center justify-between z-10">
+        <div class="flex items-center gap-3">
+            <svg class="w-8 h-8 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            <h1 class="text-2xl font-bold tracking-tight">Forge <span class="primary-text-gradient">Transit</span></h1>
+        </div>
+        <div id="userIdentityDisplay" class="text-sm font-medium text-zinc-400 bg-zinc-800/50 px-4 py-2 rounded-full border border-zinc-700/50 hidden">
+            Identity: <span id="identityName" class="text-emerald-400"></span>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col lg:flex-row gap-8 p-4 md:p-8 max-w-7xl mx-auto w-full z-10">
+        
+        <!-- Left Column: File Manager -->
+        <div class="flex-1 flex flex-col gap-6">
+            <div class="glass-panel rounded-2xl p-6 flex flex-col h-full fade-in" style="animation-delay: 0.1s;">
+                <h2 class="text-xl font-semibold mb-2">Payload Bay</h2>
+                
+                <!-- Tooltip: Step 1 -->
+                <div class="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 mb-4 text-sm text-zinc-300">
+                    <p class="font-medium text-emerald-400 mb-1">Step 1. Prepare files for transit.</p>
+                    <p>Drag and drop files or entire folders into the zone below. The system will automatically index and parse folder structures.</p>
+                </div>
+
+                <!-- Drop Zone -->
+                <div id="dropZone" class="flex-grow border-2 border-dashed border-zinc-700 rounded-xl bg-zinc-900/30 flex flex-col items-center justify-center p-8 transition-colors duration-200 cursor-pointer hover:bg-zinc-800/30 relative overflow-hidden group min-h-[250px]">
+                    <svg class="w-12 h-12 text-zinc-500 mb-4 group-hover:text-emerald-500 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                    </svg>
+                    <p class="text-lg font-medium text-zinc-300 text-center">Drag files & folders here</p>
+                    <p class="text-sm text-zinc-500 mt-2 text-center">or click to open file explorer</p>
+                    <!-- Hidden standard input as fallback -->
+                    <input type="file" id="fileInput" multiple class="hidden">
+                </div>
+
+                <!-- File List -->
+                <div id="fileListContainer" class="mt-6 hidden flex-col h-64 border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/50">
+                    <div class="bg-zinc-900 px-4 py-3 border-b border-zinc-800 flex justify-between items-center">
+                        <span class="text-sm font-medium text-zinc-300" id="fileCountBadge">0 files indexed</span>
+                        <button id="clearFilesBtn" class="text-xs text-red-400 hover:text-red-300 transition-colors">Clear All</button>
+                    </div>
+                    <div id="fileList" class="overflow-y-auto p-2 flex-grow space-y-1">
+                        <!-- File items injected here -->
+                    </div>
+                </div>
+                
+                <!-- OPFS Export List (Receiver side) -->
+                <div id="receivedFilesContainer" class="mt-6 hidden flex-col border border-emerald-900/30 rounded-xl overflow-hidden bg-zinc-950/50">
+                    <div class="bg-emerald-950/20 px-4 py-3 border-b border-emerald-900/30 flex justify-between items-center">
+                        <span class="text-sm font-medium text-emerald-400">Secured in Local Transit Storage (OPFS)</span>
+                    </div>
+                    <div id="receivedFileList" class="overflow-y-auto p-2 max-h-64 space-y-1">
+                        <!-- Received files injected here -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Right Column: Control & Comm -->
+        <div class="flex-1 flex flex-col gap-6 w-full lg:max-w-md">
+            
+            <!-- Connection Setup Card -->
+            <div class="glass-panel rounded-2xl p-6 flex flex-col fade-in relative" style="animation-delay: 0.2s;">
+                <h2 class="text-xl font-semibold mb-6">Uplink Control</h2>
+
+                <!-- Role Selection -->
+                <div id="roleSelectionUI" class="flex flex-col gap-4">
+                    <div class="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 text-sm text-zinc-300">
+                        <p class="font-medium text-emerald-400 mb-1">Step 2. Establish connection protocol.</p>
+                        <p>Select your operational role below. You must authorize audio cues upon selection.</p>
+                    </div>
+                    
+                    <button id="btnInitSender" class="w-full py-4 px-6 rounded-xl primary-gradient text-white font-semibold shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all hover:scale-[1.02] flex items-center justify-center gap-3">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                        Initialize as Sender
+                    </button>
+                    <button id="btnInitReceiver" class="w-full py-4 px-6 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white font-semibold transition-all hover:scale-[1.02] flex items-center justify-center gap-3">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        Initialize as Receiver
+                    </button>
+                </div>
+
+                <!-- Sender Connection UI -->
+                <div id="senderSignalingUI" class="hidden flex-col gap-4">
+                    <div class="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 text-sm text-zinc-300">
+                        <p class="font-medium text-emerald-400 mb-1">Step 3. Share the Uplink Code.</p>
+                        <p>Provide this URL to the receiver. They will use it to securely route the tunnel back to you.</p>
+                    </div>
+                    
+                    <div class="relative">
+                        <label class="text-xs text-zinc-400 font-medium uppercase tracking-wider mb-1 block">Uplink URL</label>
+                        <div class="flex">
+                            <input type="text" id="senderUrlDisplay" readonly class="w-full bg-zinc-900 border border-zinc-700 rounded-l-lg px-4 py-3 text-emerald-400 font-mono text-sm focus:outline-none focus:border-emerald-500 truncate">
+                            <button id="btnCopyUrl" class="bg-zinc-800 border border-l-0 border-zinc-700 rounded-r-lg px-4 hover:bg-zinc-700 transition-colors text-zinc-300">
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="senderIceStatus" class="text-xs text-emerald-500 font-mono mt-1 mb-2">Generating Secure Parameters...</div>
+
+                    <button id="btnCheckAnswer" disabled class="w-full py-3 px-4 rounded-lg primary-gradient text-white font-medium transition-all opacity-50 cursor-not-allowed mt-2">
+                        Check for Peer Route
+                    </button>
+                </div>
+
+                <!-- Receiver Connection UI -->
+                <div id="receiverSignalingUI" class="hidden flex-col gap-4">
+                    <div class="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4 text-sm text-zinc-300">
+                        <p class="font-medium text-emerald-400 mb-1">Step 3. Input the Uplink Code.</p>
+                        <p>Paste the URL provided by the Sender to establish the P2P tunnel.</p>
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-zinc-400 font-medium uppercase tracking-wider mb-1 block">Uplink URL</label>
+                        <input type="text" id="receiverUrlInput" placeholder="https://twenty-json.lovable.app/p/..." class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-zinc-200 font-mono text-sm focus:outline-none focus:border-emerald-500 transition-colors">
+                    </div>
+
+                    <button id="btnScanUplink" class="w-full py-3 px-4 rounded-lg primary-gradient text-white font-medium transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] mt-2">
+                        Scan & Connect
+                    </button>
+                </div>
+
+                <!-- Active Connection Status -->
+                <div id="activeConnectionUI" class="hidden flex-col items-center justify-center py-6 gap-3">
+                    <div class="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30 mb-2 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                        <svg class="w-8 h-8 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-emerald-400">Tunnel Established</h3>
+                    <p id="peerIdentityDisplay" class="text-sm text-zinc-400">Connected to peer.</p>
+                </div>
+
+            </div>
+
+            <!-- Transfer Status Card -->
+            <div id="transferControlCard" class="glass-panel rounded-2xl p-6 flex flex-col fade-in opacity-50 pointer-events-none transition-opacity duration-300" style="animation-delay: 0.3s;">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Transit Progress</h2>
+                    <span id="overallStatusText" class="text-xs font-mono bg-zinc-800 text-zinc-300 px-2 py-1 rounded border border-zinc-700">IDLE</span>
+                </div>
+                
+                <div id="transferDetails" class="hidden flex-col gap-4">
+                    <div>
+                        <div class="flex justify-between text-xs text-zinc-400 mb-1">
+                            <span id="currentFileName" class="truncate max-w-[200px]">filename.ext</span>
+                            <span id="currentFileProgressText">0%</span>
+                        </div>
+                        <div class="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                            <div id="currentFileProgressBar" class="primary-gradient h-1.5 rounded-full transition-all duration-100" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs text-zinc-400 mb-1">
+                            <span>Overall Progress</span>
+                            <span id="overallProgressText">0 / 0 Bytes</span>
+                        </div>
+                        <div class="w-full bg-zinc-800 rounded-full h-2.5 overflow-hidden border border-zinc-700/50">
+                            <div id="overallProgressBar" class="primary-gradient h-2.5 rounded-full transition-all duration-100" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 mt-4">
+                        <button id="btnStartTransfer" class="flex-1 py-2 px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white text-sm font-medium transition-colors hidden">
+                            Initiate Send
+                        </button>
+                        <button id="btnCancelTransfer" class="flex-1 py-2 px-4 rounded-lg bg-red-950/30 hover:bg-red-900/50 border border-red-900/50 text-red-400 text-sm font-medium transition-colors hidden">
+                            Abort
+                        </button>
+                    </div>
+                </div>
+                <div id="transferIdleState" class="text-sm text-zinc-500 text-center py-4">
+                    Waiting for connection protocols to complete.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom Modal System -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="glass-panel rounded-2xl p-6 max-w-sm w-full mx-4 transform scale-95 transition-transform duration-200" id="modalBox">
+            <h3 id="modalTitle" class="text-xl font-bold mb-2">Alert</h3>
+            <p id="modalMessage" class="text-zinc-300 text-sm mb-6 leading-relaxed">Message here.</p>
+            <div id="modalActions" class="flex justify-end gap-3">
+                <!-- Buttons injected dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        /*******************************************************
+         * GLOBAL STATE & CONFIG
+         *******************************************************/
+        const CONFIG = {
+            TWENTY_JSON_BASE: 'https://twenty-json.lovable.app/p/',
+            CHUNK_SIZE: 256 * 1024, // 256KB for near native UDP/SCTP throughput
+            MAX_BUFFER: 16 * 1024 * 1024, // 16MB buffer cap before pausing
+            ICE_GATHER_TIMEOUT: 2500, // Capped wait time for ICE candidates
+            MAX_ICE_CANDIDATES: 8
+        };
+
+        const STATE = {
+            role: null, // 'sender' | 'receiver'
+            identity: '',
+            peerIdentity: '',
+            files: [], // Array of { file: File, path: string, size: number }
+            totalBytes: 0,
+            sentBytes: 0,
+            receivedBytes: 0,
+            connectionState: 'idle',
+            signalingId: '',
+            rtcPeerConnection: null,
+            dataChannel: null,
+            isTransferring: false,
+            cancelRequested: false,
+            opfsWorker: null,
+            currentFileIndex: 0
+        };
+
+        /*******************************************************
+         * AUDIO SYSTEM (Beeps)
+         *******************************************************/
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playAlertBeep() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch (A5)
+            osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        /*******************************************************
+         * IDENTITY GENERATOR
+         *******************************************************/
+        const VEGETABLES = ['Broccoli', 'Carrot', 'Asparagus', 'Spinach', 'Turnip', 'Radish', 'Celery', 'Kale'];
+        const ANIMALS = ['Panther', 'Falcon', 'Wolf', 'Tiger', 'Bear', 'Eagle', 'Shark', 'Hawk'];
+
+        function generateIdentity(role) {
+            const list = role === 'sender' ? VEGETABLES : ANIMALS;
+            const name = list[Math.floor(Math.random() * list.length)];
+            const num = Math.floor(Math.random() * 900) + 100; // 100-999
+            return `${name}-${num}`;
+        }
+
+        /*******************************************************
+         * MODAL UI SYSTEM (Replaces alert/confirm)
+         *******************************************************/
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalBox = document.getElementById('modalBox');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalActions = document.getElementById('modalActions');
+
+        function showModal(title, message, buttons) {
+            modalTitle.textContent = title;
+            modalMessage.innerHTML = message;
+            modalActions.innerHTML = '';
+            
+            buttons.forEach(btn => {
+                const b = document.createElement('button');
+                b.textContent = btn.label;
+                b.className = btn.primary ? 
+                    'px-4 py-2 rounded-lg primary-gradient text-white font-medium hover:shadow-lg transition-all' : 
+                    'px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-medium transition-colors border border-zinc-700';
+                b.onclick = () => {
+                    hideModal();
+                    if(btn.onClick) btn.onClick();
+                };
+                modalActions.appendChild(b);
+            });
+
+            modalOverlay.classList.remove('opacity-0', 'pointer-events-none');
+            modalBox.classList.remove('scale-95');
+        }
+
+        function hideModal() {
+            modalOverlay.classList.add('opacity-0', 'pointer-events-none');
+            modalBox.classList.add('scale-95');
+        }
+
+        function customAlert(title, message) {
+            showModal(title, message, [{label: 'Acknowledge', primary: true}]);
+        }
+
+        /*******************************************************
+         * OPFS WEB WORKER (Inline Blob Construction)
+         *******************************************************/
+        // This worker handles direct-to-disk synchronous writing to achieve near-native speed
+        // while bypassing the main thread's memory limitations.
+        const workerCode = `
+            let dirHandle;
+            let fileHandle;
+            let syncHandle;
+
+            onmessage = async (e) => {
+                const { type, data } = e.data;
+                try {
+                    if (type === 'INIT') {
+                        // Request OPFS root
+                        const root = await navigator.storage.getDirectory();
+                        dirHandle = await root.getDirectoryHandle('ForgeTransit_Received', { create: true });
+                        postMessage({ type: 'READY' });
+                    }
+                    else if (type === 'START_FILE') {
+                        // Create file entry in OPFS
+                        // For simplicity in OPFS flat structure, replace slashes with underscores
+                        const safeName = data.fileName.replace(/[\\\\/]/g, '_'); 
+                        fileHandle = await dirHandle.getFileHandle(safeName, { create: true });
+                        // Create synchronous access handle for high-performance writing
+                        syncHandle = await fileHandle.createSyncAccessHandle();
+                        // Truncate to 0 in case it existed
+                        syncHandle.truncate(0); 
+                        postMessage({ type: 'FILE_STARTED', safeName: safeName });
+                    } 
+                    else if (type === 'CHUNK') {
+                        // Synchronous write (zero copy from main thread if transferred)
+                        const buffer = new Uint8Array(data.chunk);
+                        syncHandle.write(buffer);
+                        postMessage({ type: 'CHUNK_WRITTEN', size: buffer.byteLength });
+                    } 
+                    else if (type === 'END_FILE') {
+                        syncHandle.flush();
+                        syncHandle.close();
+                        postMessage({ type: 'FILE_CLOSED', safeName: data.safeName });
+                    }
+                    else if (type === 'ABORT') {
+                        if(syncHandle) {
+                            try { syncHandle.close(); } catch(e){}
+                        }
+                        postMessage({ type: 'ABORTED' });
+                    }
+                } catch(err) {
+                    postMessage({ type: 'ERROR', error: err.toString() });
+                }
+            };
+        `;
+
+        function initOPFSWorker() {
+            if (STATE.opfsWorker) return;
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            STATE.opfsWorker = new Worker(URL.createObjectURL(blob));
+            
+            STATE.opfsWorker.onmessage = (e) => {
+                const { type, size, safeName, error } = e.data;
+                if (type === 'READY') console.log('OPFS Worker Ready');
+                else if (type === 'FILE_STARTED') console.log('Worker: File opened');
+                else if (type === 'CHUNK_WRITTEN') {
+                    STATE.receivedBytes += size;
+                    updateProgressUI(STATE.receivedBytes, STATE.totalBytes);
+                }
+                else if (type === 'FILE_CLOSED') {
+                    console.log('Worker: File saved to OPFS as', safeName);
+                    addReceivedFileToUI(safeName);
+                }
+                else if (type === 'ERROR') {
+                    console.error('OPFS Worker Error:', error);
+                    customAlert('Storage Error', 'Failed to write to OPFS disk: ' + error);
+                }
+            };
+            STATE.opfsWorker.postMessage({ type: 'INIT' });
+        }
+
+        /*******************************************************
+         * FILE SYSTEM INTERACTION
+         *******************************************************/
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileListContainer = document.getElementById('fileListContainer');
+        const fileList = document.getElementById('fileList');
+        const fileCountBadge = document.getElementById('fileCountBadge');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-active');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-active'));
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-active');
+            if(STATE.role === 'receiver') return; // Receiver doesn't select files
+            
+            const items = e.dataTransfer.items;
+            const filePromises = [];
+            
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.kind === 'file') {
+                    const entry = item.webkitGetAsEntry();
+                    if (entry) {
+                        filePromises.push(scanFiles(entry, ''));
+                    }
+                }
+            }
+            
+            const results = await Promise.all(filePromises);
+            const flatFiles = results.flat();
+            addFilesToState(flatFiles);
+        });
+
+        dropZone.addEventListener('click', () => {
+            if(STATE.role === 'receiver') return;
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files).map(f => ({
+                file: f,
+                path: f.webkitRelativePath || f.name,
+                size: f.size
+            }));
+            addFilesToState(files);
+            fileInput.value = ''; // reset
+        });
+
+        async function scanFiles(item, path) {
+            path = path || "";
+            if (item.isFile) {
+                return new Promise((resolve) => {
+                    item.file((file) => {
+                        resolve([{ file: file, path: path + file.name, size: file.size }]);
+                    });
+                });
+            } else if (item.isDirectory) {
+                const dirReader = item.createReader();
+                let entries = [];
+                
+                const readEntries = async () => {
+                    return new Promise((resolve) => {
+                        dirReader.readEntries(async (results) => {
+                            if (!results.length) {
+                                resolve(entries);
+                            } else {
+                                entries = entries.concat(results);
+                                resolve(await readEntries());
+                            }
+                        });
+                    });
+                };
+                
+                const allEntries = await readEntries();
+                const nestedPromises = allEntries.map(e => scanFiles(e, path + item.name + "/"));
+                const results = await Promise.all(nestedPromises);
+                return results.flat();
+            }
+            return [];
+        }
+
+        function addFilesToState(newFiles) {
+            STATE.files = [...STATE.files, ...newFiles];
+            updateFileListUI();
+        }
+
+        document.getElementById('clearFilesBtn').addEventListener('click', () => {
+            STATE.files = [];
+            updateFileListUI();
+        });
+
+        function updateFileListUI() {
+            if (STATE.files.length === 0) {
+                fileListContainer.classList.add('hidden');
+                dropZone.classList.remove('hidden');
+                return;
+            }
+            
+            dropZone.classList.add('hidden');
+            fileListContainer.classList.remove('hidden', 'flex');
+            fileListContainer.classList.add('flex'); // re-apply flex
+            
+            let totalS = 0;
+            fileList.innerHTML = '';
+            STATE.files.forEach(f => {
+                totalS += f.size;
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center bg-zinc-800/50 p-2 rounded border border-zinc-700/30 text-sm';
+                div.innerHTML = `
+                    <span class="text-zinc-300 truncate max-w-[70%] text-xs" title="${f.path}">${f.path}</span>
+                    <span class="text-zinc-500 text-xs">${formatBytes(f.size)}</span>
+                `;
+                fileList.appendChild(div);
+            });
+            
+            STATE.totalBytes = totalS;
+            fileCountBadge.textContent = `${STATE.files.length} items (${formatBytes(totalS)})`;
+
+            // Enable transfer button if connected
+            if(STATE.connectionState === 'connected' && STATE.role === 'sender' && STATE.files.length > 0) {
+                document.getElementById('btnStartTransfer').classList.remove('hidden');
+            }
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        /*******************************************************
+         * WEBRTC & SIGNALING
+         *******************************************************/
+        const rtcConfig = {
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        };
+
+        async function createPeerConnection() {
+            const pc = new RTCPeerConnection(rtcConfig);
+            
+            pc.oniceconnectionstatechange = () => {
+                console.log('ICE State:', pc.iceConnectionState);
+                if (pc.iceConnectionState === 'connected') {
+                    document.getElementById('activeConnectionUI').classList.remove('hidden', 'flex');
+                    document.getElementById('activeConnectionUI').classList.add('flex');
+                    document.getElementById('senderSignalingUI').classList.add('hidden');
+                    document.getElementById('receiverSignalingUI').classList.add('hidden');
+                    document.getElementById('transferControlCard').classList.remove('opacity-50', 'pointer-events-none');
+                    document.getElementById('transferIdleState').classList.add('hidden');
+                    document.getElementById('transferDetails').classList.remove('hidden', 'flex');
+                    document.getElementById('transferDetails').classList.add('flex');
+                    STATE.connectionState = 'connected';
+                    playAlertBeep();
+
+                    if(STATE.role === 'sender' && STATE.files.length > 0) {
+                        document.getElementById('btnStartTransfer').classList.remove('hidden');
+                    }
+                } else if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                    customAlert('Connection Lost', 'The P2P tunnel was interrupted.');
+                    resetApp();
+                }
+            };
+
+            return pc;
+        }
+
+        function setupDataChannel(channel) {
+            channel.binaryType = 'arraybuffer';
+            channel.onopen = () => console.log('DataChannel Open');
+            channel.onclose = () => console.log('DataChannel Closed');
+            channel.onmessage = handleChannelMessage;
+            STATE.dataChannel = channel;
+        }
+
+        // --- SENDER LOGIC ---
+        document.getElementById('btnInitSender').addEventListener('click', async () => {
+            initAudio();
+            STATE.role = 'sender';
+            STATE.identity = generateIdentity('sender');
+            document.getElementById('identityName').textContent = STATE.identity;
+            document.getElementById('userIdentityDisplay').classList.remove('hidden');
+            
+            document.getElementById('roleSelectionUI').classList.add('hidden');
+            document.getElementById('senderSignalingUI').classList.remove('hidden', 'flex');
+            document.getElementById('senderSignalingUI').classList.add('flex');
+            
+            STATE.signalingId = 'forge-' + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+            const url = CONFIG.TWENTY_JSON_BASE + STATE.signalingId;
+            document.getElementById('senderUrlDisplay').value = url;
+            
+            const pc = await createPeerConnection();
+            STATE.rtcPeerConnection = pc;
+            
+            const dc = pc.createDataChannel('transit-channel', { negotiated: true, id: 0 });
+            setupDataChannel(dc);
+
+            let candidates = [];
+            let iceGatheringComplete = false;
+
+            pc.onicecandidate = (e) => {
+                if (e.candidate && candidates.length < CONFIG.MAX_ICE_CANDIDATES) {
+                    candidates.push(e.candidate);
+                }
+            };
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            // Wait a short time for ICE gathering to finish quickly rather than indefinitely
+            await new Promise(resolve => {
+                if (pc.iceGatheringState === 'complete') resolve();
+                else {
+                    pc.onicegatheringstatechange = () => {
+                        if (pc.iceGatheringState === 'complete') resolve();
+                    };
+                    setTimeout(resolve, CONFIG.ICE_GATHER_TIMEOUT);
+                }
+            });
+
+            // Post Offer to Twenty-JSON
+            document.getElementById('senderIceStatus').textContent = 'Uploading SDP to Relay...';
+            try {
+                const payload = {
+                    sender: {
+                        name: STATE.identity,
+                        offer: pc.localDescription,
+                        candidates: candidates
+                    }
+                };
+                
+                await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                document.getElementById('senderIceStatus').textContent = 'Uplink Ready. Awaiting Peer.';
+                document.getElementById('btnCheckAnswer').disabled = false;
+                document.getElementById('btnCheckAnswer').classList.remove('opacity-50', 'cursor-not-allowed');
+            } catch(e) {
+                customAlert('Signaling Error', 'Could not post to signaling server.');
+            }
+        });
+
+        document.getElementById('btnCopyUrl').addEventListener('click', () => {
+            const input = document.getElementById('senderUrlDisplay');
+            input.select();
+            document.execCommand('copy');
+            const btn = document.getElementById('btnCopyUrl');
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 2000);
+        });
+
+        document.getElementById('btnCheckAnswer').addEventListener('click', async () => {
+            const url = CONFIG.TWENTY_JSON_BASE + STATE.signalingId;
+            try {
+                document.getElementById('btnCheckAnswer').textContent = 'Polling...';
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.receiver && data.receiver.answer) {
+                    STATE.peerIdentity = data.receiver.name;
+                    document.getElementById('peerIdentityDisplay').textContent = `Connected to: ${STATE.peerIdentity}`;
+                    
+                    await STATE.rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(data.receiver.answer));
+                    for (const candidate of data.receiver.candidates || []) {
+                        await STATE.rtcPeerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                    }
+                    // Connection will trigger iceconnectionstatechange
+                } else {
+                    document.getElementById('btnCheckAnswer').textContent = 'Check for Peer Route';
+                    // customAlert('No Route', 'Peer has not posted an answer yet. Wait a moment.');
+                    // Silent fail to allow rapid polling by user
+                }
+            } catch(e) {
+                document.getElementById('btnCheckAnswer').textContent = 'Check for Peer Route';
+                console.error(e);
+            }
+        });
+
+        // --- RECEIVER LOGIC ---
+        document.getElementById('btnInitReceiver').addEventListener('click', () => {
+            initAudio();
+            STATE.role = 'receiver';
+            STATE.identity = generateIdentity('receiver');
+            document.getElementById('identityName').textContent = STATE.identity;
+            document.getElementById('userIdentityDisplay').classList.remove('hidden');
+            
+            document.getElementById('roleSelectionUI').classList.add('hidden');
+            document.getElementById('receiverSignalingUI').classList.remove('hidden', 'flex');
+            document.getElementById('receiverSignalingUI').classList.add('flex');
+            
+            // Receiver shouldn't use file dropper for sending
+            dropZone.querySelector('p').textContent = 'Receiver Mode Active';
+            dropZone.querySelector('p.text-sm').textContent = 'Waiting to receive files...';
+            dropZone.classList.add('pointer-events-none');
+            
+            initOPFSWorker();
+        });
+
+        document.getElementById('btnScanUplink').addEventListener('click', async () => {
+            const url = document.getElementById('receiverUrlInput').value.trim();
+            if(!url.includes('twenty-json')) {
+                customAlert('Invalid URL', 'Please paste the exact URL provided by the sender.');
+                return;
+            }
+
+            const btn = document.getElementById('btnScanUplink');
+            btn.innerHTML = '<div class="w-5 h-5 rounded-full border-2 border-white loader inline-block align-middle mr-2"></div> Connecting...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if(!data.sender || !data.sender.offer) throw new Error("Invalid SDP format in relay.");
+                
+                STATE.peerIdentity = data.sender.name;
+                document.getElementById('peerIdentityDisplay').textContent = `Connected to: ${STATE.peerIdentity}`;
+
+                const pc = await createPeerConnection();
+                STATE.rtcPeerConnection = pc;
+                
+                pc.ondatachannel = (event) => setupDataChannel(event.channel);
+                
+                let candidates = [];
+                pc.onicecandidate = (e) => {
+                    if (e.candidate && candidates.length < CONFIG.MAX_ICE_CANDIDATES) {
+                        candidates.push(e.candidate);
+                    }
+                };
+
+                await pc.setRemoteDescription(new RTCSessionDescription(data.sender.offer));
+                for (const candidate of data.sender.candidates || []) {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                }
+
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+
+                await new Promise(resolve => {
+                    if (pc.iceGatheringState === 'complete') resolve();
+                    else {
+                        pc.onicegatheringstatechange = () => {
+                            if (pc.iceGatheringState === 'complete') resolve();
+                        };
+                        setTimeout(resolve, CONFIG.ICE_GATHER_TIMEOUT);
+                    }
+                });
+
+                // Post Answer back to same URL
+                data.receiver = {
+                    name: STATE.identity,
+                    answer: pc.localDescription,
+                    candidates: candidates
+                };
+
+                await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                btn.textContent = 'Answer Posted! Waiting for Sender...';
+                playAlertBeep();
+                
+            } catch(e) {
+                console.error(e);
+                customAlert('Relay Error', 'Could not scan uplink. Make sure the URL is correct and has not expired.');
+                btn.textContent = 'Scan & Connect';
+                btn.disabled = false;
+            }
+        });
+
+        /*******************************************************
+         * DATA CHANNEL MESSAGING & FILE TRANSFER
+         *******************************************************/
+        function handleChannelMessage(e) {
+            if (typeof e.data === 'string') {
+                const msg = JSON.parse(e.data);
+                
+                // Receiver handling requests
+                if (msg.cmd === 'REQUEST_TRANSFER') {
+                    playAlertBeep();
+                    showModal('Incoming Transit Request', 
+                        `<b>${STATE.peerIdentity}</b> wants to send ${msg.fileCount} files (${formatBytes(msg.totalBytes)}).<br><br>Do you accept?`, 
+                        [
+                            { label: 'Reject', onClick: () => STATE.dataChannel.send(JSON.stringify({cmd: 'REJECT'})) },
+                            { label: 'Accept', primary: true, onClick: () => {
+                                STATE.totalBytes = msg.totalBytes;
+                                STATE.receivedBytes = 0;
+                                updateProgressUI(0, STATE.totalBytes);
+                                document.getElementById('overallStatusText').textContent = 'RECEIVING';
+                                document.getElementById('overallStatusText').classList.add('text-emerald-400', 'border-emerald-500/50');
+                                STATE.dataChannel.send(JSON.stringify({cmd: 'ACCEPT'}));
+                            }}
+                        ]
+                    );
+                }
+                else if (msg.cmd === 'START_FILE') {
+                    document.getElementById('currentFileName').textContent = msg.fileName;
+                    document.getElementById('currentFileProgressText').textContent = '0%';
+                    document.getElementById('currentFileProgressBar').style.width = '0%';
+                    
+                    if(STATE.opfsWorker) {
+                        STATE.opfsWorker.postMessage({ type: 'START_FILE', data: { fileName: msg.fileName }});
+                    }
+                }
+                else if (msg.cmd === 'END_FILE') {
+                    if(STATE.opfsWorker) {
+                        STATE.opfsWorker.postMessage({ type: 'END_FILE', data: { safeName: msg.fileName.replace(/[\\\\/]/g, '_') } });
+                    }
+                }
+                else if (msg.cmd === 'ALL_DONE') {
+                    playAlertBeep();
+                    document.getElementById('overallStatusText').textContent = 'COMPLETE';
+                    document.getElementById('overallStatusText').classList.replace('text-emerald-400', 'text-blue-400');
+                    customAlert('Transfer Complete', 'All files have been successfully received and saved to local transit storage.');
+                }
+                // Sender handling responses
+                else if (msg.cmd === 'ACCEPT') {
+                    document.getElementById('overallStatusText').textContent = 'TRANSMITTING';
+                    document.getElementById('overallStatusText').classList.add('text-emerald-400', 'border-emerald-500/50');
+                    document.getElementById('btnCancelTransfer').classList.remove('hidden');
+                    document.getElementById('btnStartTransfer').classList.add('hidden');
+                    STATE.isTransferring = true;
+                    STATE.cancelRequested = false;
+                    STATE.sentBytes = 0;
+                    startSendingSequence();
+                }
+                else if (msg.cmd === 'REJECT') {
+                    customAlert('Transit Rejected', `${STATE.peerIdentity} declined the file transfer.`);
+                    document.getElementById('btnStartTransfer').disabled = false;
+                    document.getElementById('btnStartTransfer').textContent = 'Initiate Send';
+                }
+                else if (msg.cmd === 'CANCEL') {
+                    STATE.cancelRequested = true;
+                    if(STATE.opfsWorker) STATE.opfsWorker.postMessage({type: 'ABORT'});
+                    document.getElementById('overallStatusText').textContent = 'ABORTED';
+                    document.getElementById('overallStatusText').classList.replace('text-emerald-400', 'text-red-400');
+                    customAlert('Transit Aborted', 'The transfer was aborted by the peer.');
+                }
+            } 
+            else if (e.data instanceof ArrayBuffer) {
+                // Binary Chunk Received
+                if(STATE.opfsWorker) {
+                    // Zero-copy transfer to worker
+                    STATE.opfsWorker.postMessage({ type: 'CHUNK', data: { chunk: e.data } }, [e.data]);
+                }
+            }
+        }
+
+        // Sender Flow
+        document.getElementById('btnStartTransfer').addEventListener('click', () => {
+            const btn = document.getElementById('btnStartTransfer');
+            btn.textContent = 'Awaiting Consent...';
+            btn.disabled = true;
+            
+            STATE.dataChannel.send(JSON.stringify({
+                cmd: 'REQUEST_TRANSFER',
+                fileCount: STATE.files.length,
+                totalBytes: STATE.totalBytes
+            }));
+        });
+
+        document.getElementById('btnCancelTransfer').addEventListener('click', () => {
+            showModal('Abort Transit', 'Are you sure you want to halt the transmission?', [
+                { label: 'No, Continue' },
+                { label: 'Yes, Abort', primary: true, onClick: () => {
+                    STATE.cancelRequested = true;
+                    STATE.dataChannel.send(JSON.stringify({cmd: 'CANCEL'}));
+                    document.getElementById('overallStatusText').textContent = 'ABORTED';
+                    document.getElementById('overallStatusText').classList.replace('text-emerald-400', 'text-red-400');
+                    document.getElementById('btnCancelTransfer').classList.add('hidden');
+                }}
+            ]);
+        });
+
+        async function startSendingSequence() {
+            STATE.currentFileIndex = 0;
+            
+            for (let i = 0; i < STATE.files.length; i++) {
+                if (STATE.cancelRequested) break;
+                
+                const fileObj = STATE.files[i];
+                document.getElementById('currentFileName').textContent = fileObj.path;
+                
+                STATE.dataChannel.send(JSON.stringify({
+                    cmd: 'START_FILE',
+                    fileName: fileObj.path,
+                    size: fileObj.size
+                }));
+                
+                await sendFileChunks(fileObj.file, fileObj.size);
+                
+                if (STATE.cancelRequested) break;
+                
+                STATE.dataChannel.send(JSON.stringify({
+                    cmd: 'END_FILE',
+                    fileName: fileObj.path
+                }));
+            }
+
+            if (!STATE.cancelRequested) {
+                STATE.dataChannel.send(JSON.stringify({ cmd: 'ALL_DONE' }));
+                document.getElementById('overallStatusText').textContent = 'COMPLETE';
+                document.getElementById('overallStatusText').classList.replace('text-emerald-400', 'text-blue-400');
+                document.getElementById('btnCancelTransfer').classList.add('hidden');
+                playAlertBeep();
+            }
+        }
+
+        function sendFileChunks(file, totalSize) {
+            return new Promise(async (resolve, reject) => {
+                let offset = 0;
+                
+                async function sendNext() {
+                    if (STATE.cancelRequested) return resolve();
+                    
+                    if (offset < totalSize) {
+                        if (STATE.dataChannel.bufferedAmount > CONFIG.MAX_BUFFER) {
+                            // Wait for buffer to drain to prevent memory crash
+                            STATE.dataChannel.onbufferedamountlow = () => {
+                                STATE.dataChannel.onbufferedamountlow = null;
+                                sendNext();
+                            };
+                            return;
+                        }
+
+                        const chunk = file.slice(offset, offset + CONFIG.CHUNK_SIZE);
+                        const buffer = await chunk.arrayBuffer();
+                        
+                        try {
+                            STATE.dataChannel.send(buffer);
+                        } catch(e) {
+                            console.error("Send failed", e);
+                            return reject(e);
+                        }
+
+                        offset += buffer.byteLength;
+                        STATE.sentBytes += buffer.byteLength;
+                        
+                        // Update UI
+                        const filePerc = Math.min(100, Math.round((offset / totalSize) * 100));
+                        document.getElementById('currentFileProgressText').textContent = `${filePerc}%`;
+                        document.getElementById('currentFileProgressBar').style.width = `${filePerc}%`;
+                        updateProgressUI(STATE.sentBytes, STATE.totalBytes);
+
+                        // Use setTimeout occasionally to yield to UI thread if synchronous loop blocks
+                        if(offset % (CONFIG.CHUNK_SIZE * 10) === 0) {
+                            setTimeout(sendNext, 0);
+                        } else {
+                            sendNext();
+                        }
+                    } else {
+                        resolve();
+                    }
+                }
+                
+                sendNext();
+            });
+        }
+
+        function updateProgressUI(current, total) {
+            const overallPerc = total === 0 ? 0 : Math.min(100, (current / total) * 100).toFixed(1);
+            document.getElementById('overallProgressText').textContent = `${formatBytes(current)} / ${formatBytes(total)} (${overallPerc}%)`;
+            document.getElementById('overallProgressBar').style.width = `${overallPerc}%`;
+        }
+
+        // Export Mechanism from OPFS to User Disk
+        function addReceivedFileToUI(safeName) {
+            const container = document.getElementById('receivedFilesContainer');
+            const list = document.getElementById('receivedFileList');
+            container.classList.remove('hidden');
+            container.classList.add('flex');
+            
+            const div = document.createElement('div');
+            div.className = 'flex justify-between items-center bg-emerald-950/20 p-2 rounded border border-emerald-900/30 text-sm hover:bg-emerald-900/30 transition-colors';
+            div.innerHTML = `
+                <span class="text-emerald-300 truncate max-w-[70%] text-xs">${safeName}</span>
+                <button class="text-xs bg-emerald-800 hover:bg-emerald-700 text-white px-3 py-1 rounded transition-colors" onclick="exportFromOPFS('${safeName}')">Save to Disk</button>
+            `;
+            list.appendChild(div);
+        }
+
+        async function exportFromOPFS(safeName) {
+            try {
+                const root = await navigator.storage.getDirectory();
+                const dirHandle = await root.getDirectoryHandle('ForgeTransit_Received');
+                const fileHandle = await dirHandle.getFileHandle(safeName);
+                const file = await fileHandle.getFile();
+                
+                // Fallback approach for single file: Create blob URL
+                // Note: For massive files (>2GB), a direct WritableStream is better, 
+                // but blob url is universally supported for anchor downloads.
+                const url = URL.createObjectURL(file);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = safeName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+            } catch(e) {
+                console.error(e);
+                customAlert('Export Error', 'Could not export file from secure storage.');
+            }
+        }
+
+        function resetApp() {
+            setTimeout(() => window.location.reload(), 2000);
+        }
+
+    </script>
+</body>
+</html>
